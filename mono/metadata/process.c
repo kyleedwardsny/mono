@@ -1051,3 +1051,25 @@ ves_icall_System_Diagnostics_Process_GetProcessData (int pid, gint32 data_type, 
 	return res;
 }
 
+MonoArray
+*ves_icall_System_Diagnostics_Process_ThreadIds_internal (int pid, int num, gint32 *error)
+{
+	MonoProcessError perror;
+	MonoArray *array = mono_array_new (mono_domain_get(), mono_get_int32_class (), num);
+	int *thread_ids = g_new0 (int, num);
+	int i;
+
+	mono_process_get_thread_ids_with_error (GINT_TO_POINTER (pid), thread_ids, num, &perror);
+	if (error)
+		*error = perror;
+
+	if (!perror) {
+		for (i = 0; i < num; i++) {
+			mono_array_set (array, int, i, thread_ids[i]);
+		}
+	}
+
+	g_free (thread_ids);
+	return array;
+}
+

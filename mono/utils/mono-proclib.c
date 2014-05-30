@@ -653,3 +653,37 @@ mono_cpu_get_data (int cpu_id, MonoCpuData data, MonoProcessError *error)
 	return value;
 }
 
+void
+mono_process_get_thread_ids_with_error (gpointer pid, int *array, int num, MonoProcessError *error)
+{
+	int rpid = GPOINTER_TO_INT(pid);
+	char buf[512];
+	GDir *dir;
+	const gchar *dirname;
+	gchar *dirname_end;
+	int index = 0;
+
+	if (error)
+		*error = MONO_PROCESS_ERROR_NONE;
+
+	g_snprintf(buf, sizeof(buf), "/proc/%d/task", rpid);
+	dir = g_dir_open(buf, 0, NULL);
+	if (!dir) {
+		if (error)
+			*error = MONO_PROCESS_ERROR_NOT_FOUND;
+		return;
+	}
+
+	while ((dirname = g_dir_read_name (dir)) && index < num) {
+		array[index] = strtol (dirname, &dirname_end, 10);
+		if (dirname_end == dirname) {
+			if (error)
+				*error = MONO_PROCESS_ERROR_OTHER;
+			break;
+		}
+		index++;
+	}
+
+	g_dir_close(dir);
+}
+
