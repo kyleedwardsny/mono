@@ -37,10 +37,13 @@ namespace System.Diagnostics
 	[Designer ("System.Diagnostics.Design.ProcessThreadDesigner, " + Consts.AssemblySystem_Design)]
 	public class ProcessThread : Component 
 	{
+		int pid;
+		int thread_id;
 
-		[MonoTODO ("Parse parameters")]
-		internal ProcessThread() 
+		internal ProcessThread(int pid, int thread_id) 
 		{
+			this.pid = pid;
+			this.thread_id = thread_id;
 		}
 
 		[MonoTODO]
@@ -59,11 +62,10 @@ namespace System.Diagnostics
 			}
 		}
 
-		[MonoTODO]
 		[MonitoringDescription ("The ID of this thread.")]
 		public int Id {
 			get {
-				return(0);
+				return(thread_id);
 			}
 		}
 

@@ -684,14 +684,21 @@ namespace System.Diagnostics {
 			set { synchronizingObject = value; }
 		}
 
-		[MonoTODO]
+		[MethodImplAttribute(MethodImplOptions.InternalCall)]
+		private extern static int[] ThreadIds_internal (int process_id, out int error);
+
 		[DesignerSerializationVisibility (DesignerSerializationVisibility.Hidden)]
 		[MonitoringDescription ("The number of threads of this process.")]
 		public ProcessThreadCollection Threads {
 			get {
-				// This'll return a correctly-sized array of empty ProcessThreads for now.
 				int error;
-				return new ProcessThreadCollection(new ProcessThread[GetProcessData (pid, 0, out error)]);
+				int[] thread_ids = ThreadIds_internal (pid, out error);
+				if (error != 0)
+					throw new SystemException ();
+				ProcessThread[] threads = new ProcessThread [thread_ids.Length];
+				for (int i = 0; i < thread_ids.Length; i++)
+					threads [i] = new ProcessThread (pid, thread_ids [i]);
+				return new ProcessThreadCollection (threads);
 			}
 		}
 
