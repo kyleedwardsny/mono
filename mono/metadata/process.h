@@ -78,7 +78,7 @@ gint64 ves_icall_System_Diagnostics_Process_Times (HANDLE process, gint32 type) 
 gint32 ves_icall_System_Diagnostics_Process_GetPriorityClass (HANDLE process, gint32 *error) MONO_INTERNAL;
 MonoBoolean ves_icall_System_Diagnostics_Process_SetPriorityClass (HANDLE process, gint32 priority_class, gint32 *error) MONO_INTERNAL;
 gint64 ves_icall_System_Diagnostics_Process_GetProcessData (int pid, gint32 data_type, gint32 *error) MONO_INTERNAL;
-MonoArray *ves_icall_System_Diagnostics_Process_ThreadIds_internal (int pid, int num, gint32 *error) MONO_INTERNAL;
+MonoArray *ves_icall_System_Diagnostics_Process_ThreadIds_internal (int pid, gint32 *error) MONO_INTERNAL;
 
 HANDLE ves_icall_System_Diagnostics_Process_ProcessHandle_duplicate (HANDLE process);
 void ves_icall_System_Diagnostics_Process_ProcessHandle_close (HANDLE process);

@@ -653,37 +653,57 @@ mono_cpu_get_data (int cpu_id, MonoCpuData data, MonoProcessError *error)
 	return value;
 }
 
-void
-mono_process_get_thread_ids_with_error (gpointer pid, int *array, int num, MonoProcessError *error)
+gpointer
+*mono_process_get_thread_ids_with_error (gpointer pid, int *num, MonoProcessError *error)
 {
 	int rpid = GPOINTER_TO_INT(pid);
 	char buf[512];
 	GDir *dir;
 	const gchar *dirname;
 	gchar *dirname_end;
-	int index = 0;
+	int count = 0;
+	int bufsize = 0;
+	gpointer *array = NULL;
 
-	if (error)
-		*error = MONO_PROCESS_ERROR_NONE;
-
-	g_snprintf(buf, sizeof(buf), "/proc/%d/task", rpid);
-	dir = g_dir_open(buf, 0, NULL);
+	g_snprintf (buf, sizeof (buf), "/proc/%d/task", rpid);
+	dir = g_dir_open (buf, 0, NULL);
 	if (!dir) {
 		if (error)
 			*error = MONO_PROCESS_ERROR_NOT_FOUND;
-		return;
+		return NULL;
 	}
 
-	while ((dirname = g_dir_read_name (dir)) && index < num) {
-		array[index] = strtol (dirname, &dirname_end, 10);
+	for (;;) {
+		dirname = g_dir_read_name (dir);
+		if (!dirname)
+			break;
+		if (count >= bufsize) {
+			if (bufsize == 0)
+				bufsize = 16;
+			else
+				bufsize *= 2;
+			array = g_realloc (array, bufsize * sizeof (int));
+		}
+		array[count] = GINT_TO_POINTER (strtol (dirname, &dirname_end, 10));
 		if (dirname_end == dirname) {
 			if (error)
 				*error = MONO_PROCESS_ERROR_OTHER;
-			break;
+			g_dir_close (dir);
+			if (num)
+				*num = 0;
+			g_free (array);
+			return NULL;
 		}
-		index++;
+		count++;
 	}
 
-	g_dir_close(dir);
+	if (num)
+		*num = count;
+	if (error)
+		*error = MONO_PROCESS_ERROR_NONE;
+	g_dir_close (dir);
+	if (num)
+		*num = count;
+	return array;
 }
 
