@@ -39,21 +39,15 @@
 #else
 #define kinfo_pid_member ki_pid
 #define kinfo_name_member ki_comm
+#define kinfo_tid_member ki_tid
 #endif
 #define USE_SYSCTL 1
 #endif
 
-/**
- * mono_process_list:
- * @size: a pointer to a location where the size of the returned array is stored
- *
- * Return an array of pid values for the processes currently running on the system.
- * The size of the array is stored in @size.
- */
-gpointer*
-mono_process_list (int *size)
-{
 #if USE_SYSCTL
+static gpointer*
+get_processes_with_filter(int filter, int arg, int threads, int *size)
+{
 	int res, i;
 #ifdef KERN_PROC2
 	int mib [6];
@@ -74,8 +68,8 @@ mono_process_list (int *size)
 #ifdef KERN_PROC2
 	mib [0] = CTL_KERN;
 	mib [1] = KERN_PROC2;
-	mib [2] = KERN_PROC_ALL;
-	mib [3] = 0;
+	mib [2] = filter;
+	mib [3] = arg;
 	mib [4] = sizeof(struct kinfo_proc2);
 	mib [5] = 400; /* XXX */
 
@@ -83,8 +77,8 @@ mono_process_list (int *size)
 #else
 	mib [0] = CTL_KERN;
 	mib [1] = KERN_PROC;
-	mib [2] = KERN_PROC_ALL;
-	mib [3] = 0;
+	mib [2] = filter;
+	mib [3] = arg;
 	
 	res = sysctl (mib, 4, processes, &data_len, NULL, 0);
 #endif /* KERN_PROC2 */
@@ -94,17 +88,37 @@ mono_process_list (int *size)
 		return NULL;
 	}
 #ifdef KERN_PROC2
-	res = data_len/sizeof (struct kinfo_proc2);
+	res = data_len / sizeof (struct kinfo_proc2);
 #else
-	res = data_len/sizeof (struct kinfo_proc);
+	res = data_len / sizeof (struct kinfo_proc);
 #endif /* KERN_PROC2 */
 	buf = g_realloc (buf, res * sizeof (void*));
-	for (i = 0; i < res; ++i)
-		buf [i] = GINT_TO_POINTER (processes [i].kinfo_pid_member);
+	if (threads) {
+		for (i = 0; i < res; ++i)
+			buf [i] = GINT_TO_POINTER (processes [i].kinfo_tid_member);
+	} else {
+		for (i = 0; i < res; ++i)
+			buf [i] = GINT_TO_POINTER (processes [i].kinfo_pid_member);
+	}
 	free (processes);
 	if (size)
 		*size = res;
 	return buf;
+}
+#endif
+
+/**
+ * mono_process_list:
+ * @size: a pointer to a location where the size of the returned array is stored
+ *
+ * Return an array of pid values for the processes currently running on the system.
+ * The size of the array is stored in @size.
+ */
+gpointer*
+mono_process_list (int *size)
+{
+#if USE_SYSCTL
+	return get_processes_with_filter (KERN_PROC_ALL, 0, 0, size);
 #else
 	const char *name;
 	void **buf = NULL;
@@ -654,9 +668,12 @@ mono_cpu_get_data (int cpu_id, MonoCpuData data, MonoProcessError *error)
 }
 
 gpointer
-*mono_process_get_thread_ids_with_error (gpointer pid, int *num, MonoProcessError *error)
+*mono_process_get_thread_ids (gpointer pid, int *num)
 {
 	int rpid = GPOINTER_TO_INT(pid);
+#if USE_SYSCTL
+	return get_processes_with_filter (KERN_PROC_PID | KERN_PROC_INC_THREAD, rpid, 1, num);
+#else
 	char buf[512];
 	GDir *dir;
 	const gchar *dirname;
@@ -696,14 +713,13 @@ gpointer
 		}
 		count++;
 	}
+	g_dir_close (dir);
 
-	if (num)
-		*num = count;
 	if (error)
 		*error = MONO_PROCESS_ERROR_NONE;
-	g_dir_close (dir);
 	if (num)
 		*num = count;
 	return array;
+#endif
 }
 

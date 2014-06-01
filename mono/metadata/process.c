@@ -1054,20 +1054,19 @@ ves_icall_System_Diagnostics_Process_GetProcessData (int pid, gint32 data_type, 
 MonoArray
 *ves_icall_System_Diagnostics_Process_ThreadIds_internal (int pid, gint32 *error)
 {
-	MonoProcessError perror;
 	MonoArray *array = NULL;
 	gpointer *threads;
 	int i;
 	int num;
 
-	threads = mono_process_get_thread_ids_with_error (GINT_TO_POINTER (pid), &num, &perror);
-	if (error)
-		*error = perror;
-
+	threads = mono_process_get_thread_ids (GINT_TO_POINTER (pid), &num);
 	if (threads) {
 		array = mono_array_new (mono_domain_get (), mono_get_int32_class (), num);
 		for (i = 0; i < num; i++)
 			mono_array_set (array, int, i, GPOINTER_TO_INT (threads[i]));
+	} else {
+		if (error)
+			*error = MONO_PROCESS_ERROR_OTHER;
 	}
 
 	g_free (threads);
